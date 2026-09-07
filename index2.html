@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SultanTap GRD</title>
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+<style>
+body{background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:20px}
+.box{background:#222;padding:20px;border-radius:16px;margin:10px 0}
+.btn{width:100%;padding:15px;border:none;border-radius:12px;font-weight:bold;font-size:18px;margin-top:10px;cursor:pointer}
+.btn-connect{background:#F0B90B;color:#000}
+.btn-tap{width:200px;height:200px;border-radius:50%;background:orange;color:#000;font-size:28px;border:none;box-shadow:0 0 20px orange;margin-top:15px}
+.btn-auto{background:#FFA500;color:#000}
+.btn-claim{background:gray;color:#fff}
+</style>
+</head>
+<body>
+<h1>🔥 SultanTap GRD 🔥</h1>
+
+<div class="box">
+<button id="connectBtn" class="btn btn-connect">Connect Wallet</button>
+<p id="walletAddr" style="font-size:12px;word-break:break-all"></p>
+</div>
+
+<div class="box">
+<h2>SALDO GAME</h2>
+<h1 id="gameBalance">1465 GRD</h1>
+<button id="tapBtn" class="btn btn-tap">TAP</button>
+<p>+1 GRD per tap</p>
+<button id="autoTapBtn" class="btn btn-auto">AUTO TAP: OFF</button>
+</div>
+
+<div class="box">
+<h2>BALANCE BLOCKCHAIN</h2>
+<h1 id="chainBalance">0.00 GRD</h1>
+<button id="claimBtn" class="btn btn-claim">Menunggu Konfirmasi...</button>
+<p>Butuh Gas: BNB BSC ~0.0005</p>
+</div>
+
+<script>
+let web3, account, autoTapInterval = null;
+let gameBalance = 1465;
+const GRD_ABI = [{"constant":true,"inputs":[],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"type":"function"}];
+const GRD_CONTRACT = "0x4847F2E8dD63ba03b9C4f935BdEd95bEc1bcaCb4";
+
+document.getElementById('connectBtn').onclick = async () => {
+  if(window.ethereum){
+    web3 = new Web3(window.ethereum);
+    await window.ethereum.request({method:'eth_requestAccounts'});
+    await window.ethereum.request({method:'wallet_switchEthereumChain', params:[{chainId:'0x38'}]});
+    account = (await web3.eth.getAccounts())[0];
+    document.getElementById('walletAddr').innerText = account;
+    document.getElementById('connectBtn').innerText = "✅ Terhubung BSC";
+    updateChainBalance();
+  } else alert("Buka di DApp Browser Trust Wallet!");
+}
+
+function tap(){
+  gameBalance += 1;
+  document.getElementById('gameBalance').innerText = gameBalance + " GRD";
+}
+document.getElementById('tapBtn').onclick = tap;
+
+document.getElementById('autoTapBtn').onclick = () => {
+  if(autoTapInterval){
+    clearInterval(autoTapInterval); 
+    autoTapInterval = null;
+    document.getElementById('autoTapBtn').innerText = 'AUTO TAP: OFF';
+    document.getElementById('autoTapBtn').style.background = '#FFA500';
+  } else {
+    autoTapInterval = setInterval(() => { tap(); }, 100);
+    document.getElementById('autoTapBtn').innerText = 'AUTO TAP: ON';
+    document.getElementById('autoTapBtn').style.background = 'lime';
+  }
+}
+
+async function updateChainBalance(){
+  if(!account) return;
+  let contract = new web3.eth.Contract(GRD_ABI, GRD_CONTRACT);
+  let bal = await contract.methods.balanceOf(account).call();
+  document.getElementById('chainBalance').innerText = (bal/1e18).toFixed(2) + " GRD";
+  document.getElementById('claimBtn').innerText = "CLAIM KE WALLET";
+  document.getElementById('claimBtn').style.background = "#F0B90B";
+}
+
+document.getElementById('claimBtn').onclick = async () => {
+  if(!account) return alert("Connect dulu!");
+  if(gameBalance < 1) return alert("Saldo Game 0");
+  let contract = new web3.eth.Contract(GRD_ABI, GRD_CONTRACT);
+  contract.methods.transfer(account, web3.utils.toWei(gameBalance.toString())).send({from: account});
+}
+</script>
+</body>
+</html>
