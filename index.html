@@ -81,16 +81,26 @@ async function connectWallet(){
   if(typeof window.ethereum!== 'undefined'){
     web3 = new Web3(window.ethereum);
     try{
+      // PAKSA PINDAH KE BSC
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x38' }],
+      });
+
       const accounts = await window.ethereum.request({method:'eth_requestAccounts'});
       account = accounts[0];
       document.getElementById("alamat").innerText = account;
-      document.getElementById("btnConnect").innerText = "✅ Terhubung";
+      document.getElementById("btnConnect").innerText = "✅ Terhubung BSC";
       document.getElementById("tapBtn").disabled = false;
       document.getElementById("btnClaim").disabled = false;
       getSaldoChain();
       loadData();
-    }catch(err){ alert("Gagal connect: " + err.message) }
-  }else{ alert("Buka link ini di Browser Trust Wallet ya bos") }
+    }catch(err){ 
+      alert("Gagal pindah ke BSC: " + err.message) 
+    }
+  }else{ 
+    alert("Buka link ini di Browser Trust Wallet ya bos") 
+  }
 }
 
 function tap(){
