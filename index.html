@@ -1,113 +1,172 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-<title>Sultan Tap GRD v3</title>
+<meta charset="UTF-8">
+<title>BANK SULTAN v58.2 MUSIK FIX</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 <style>
-body { background:#0a0a0a; color:#fff; font-family:sans-serif; text-align:center; padding:20px }
-button { padding:15px 30px; margin:10px; border:none; border-radius:10px; font-size:18px; cursor:pointer }
-#tapBtn { background:orange; color:#000; font-size:24px; width:200px; height:200px; border-radius:50% }
-#claimBtn { background:gold; color:#000 }
-#connectBtn { background:#00d4ff; color:#000 }
-#autoBtn { background:#ff00ff; color:#fff } /* TOMBOL BARU */
-.info { margin:20px 0; font-size:16px }
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Arial', sans-serif}
+body{background:#000;color:#fff;padding-bottom:80px}
+.header{text-align:center;padding:15px}
+.header h1{color:gold;text-shadow:0 0 15px gold;font-size:26px;font-weight:bold}
+.header.sub{color:#ccc;font-size:12px;font-weight:bold}
+.saldo-box{text-align:center;padding:15px}
+.saldo{font-size:36px;font-weight:bold;color:#fff}
+.saldo-kecil{font-size:14px;color:#aaa}
+.btn{border:none;border-radius:15px;padding:16px;width:90%;font-size:16px;font-weight:bold;margin:8px auto;display:block;cursor:pointer;transition:0.2s}
+.btn:active{transform:scale(0.97)}
+.btn-biru{background:#1e90ff;color:white}
+.btn-klaim{background:linear-gradient(45deg, #FFD700, #FFA500);color:#000}
+.btn-tap{width:200px;height:200px;border-radius:50%;border:6px solid gold;box-shadow:0 0 40px rgba(255,215,0,0.8);margin:20px auto;background:radial-gradient(circle, #222 0%, #111 100%);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;color:gold;cursor:pointer;transition:0.1s}
+.btn-tap:active{transform:scale(0.92)}
+.btn-tap.active{box-shadow:0 0 60px rgba(0,255,255,1);border-color:cyan;color:cyan}
+.navbar{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #333;display:flex;justify-content:space-around;padding:8px 0;z-index:999}
+.nav-item{color:#777;font-size:10px;text-align:center;cursor:pointer;flex:1;padding:4px}
+.nav-item.active{color:gold}
+.nav-icon{font-size:20px;display:block;margin-bottom:2px}
+.nav-plus{background:#2563eb;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px;margin:0 auto;border:4px solid #000}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:15px 0}
+.btn-menu{background:#1a1a1a;border:1px solid #333;border-radius:15px;padding:20px 10px;cursor:pointer;color:#fff;font-size:14px;text-align:center;transition:0.2s}
+.btn-menu:active{background:#2a2a2a}
+.halaman{display:none}
+.halaman.active{display:block}
+.info-musik{color:cyan;font-size:11px;text-align:center;margin-top:-10px}
 </style>
 </head>
 <body>
 
-<h1>👑 SULTAN TAP GRD 👑</h1>
+<!-- BERANDA -->
+<div id="beranda" class="halaman active">
+  <div class="header"><h1>BANK SULTAN</h1><div class="sub">BHINNEKA TUNGGAL IKA</div><div id="jam" style="color:#aaa;font-size:12px;margin-top:5px"></div></div>
+  <div class="saldo-box">
+    <div class="saldo"><span id="saldoGame">25,600</span> GRD</div>
+    <div class="saldo-kecil">≈ $<span id="saldoUSD">25.60</span></div>
+  </div>
+  <button class="btn btn-biru" onclick="connectWallet()">🔗 CONNECT WALLET</button>
+  <div id="wallet" style="color:yellow;font-size:12px;text-align:center">Belum terhubung</div>
 
-<button id="connectBtn" onclick="connect()">Connect Wallet</button>
-<div class="info" id="walletInfo">Belum Terhubung</div>
+  <button class="btn btn-klaim" id="btnAktifSuara" onclick="aktifSuara()">🔊 KLIK DULU UNTUK AKTIFKAN MUSIK</button>
+  <div class="btn-tap" id="tapBtn">TAP</div>
+  <div class="info-musik" id="infoMusik">Klik tombol kuning dulu 1x</div>
 
-<div class="info">SALDO GAME: <span id="gameBalance">0</span> GRD</div>
-<div class="info">BALANCE BLOCKCHAIN: <span id="blockchainBalance">0.00</span> GRD</div>
+  <button class="btn btn-klaim" onclick="claim()">💰 KLAIM</button>
+</div>
 
-<button id="tapBtn" onclick="tap()">TAP</button><br>
-<button id="autoBtn" onclick="toggleAuto()">AUTO TAP: OFF</button><br> <!-- TOMBOL BARU -->
-<button id="claimBtn" onclick="claim()" disabled>CLAIM KE WALLET</button>
+<!-- BERDAGANG -->
+<div id="berdagang" class="halaman">
+  <div class="header"><h1>📈 BERDAGANG</h1></div>
+  <div class="grid-2">
+    <div class="btn-menu" onclick="beliGRD()">💵<br><b>Beli GRD</b></div>
+    <div class="btn-menu" onclick="swapKeUSDT()">🔄<br><b>Jual GRD</b></div>
+  </div>
+</div>
+
+<!-- DANA -->
+<div id="dana" class="halaman">
+  <div class="header"><h1>💰 DANA</h1></div>
+  <div style="background:#1a1a1a;margin:15px;padding:15px;border-radius:15px"><div style="color:#aaa;font-size:12px">SALDO SIAP WITHDRAW</div><div style="font-size:20px;font-weight:bold"><span id="saldoClaim">359,844</span> GRD</div></div>
+  <div class="grid-2">
+    <div class="btn-menu" onclick="kirimGRD()">📤<br><b>Kirim</b></div>
+    <div class="btn-menu" onclick="terimaGRD()">📥<br><b>Terima</b></div>
+  </div>
+  <button class="btn btn-klaim" onclick="withdrawBeneran()">🏦 WITHDRAW</button>
+</div>
+
+<!-- REWARD -->
+<div id="reward" class="halaman">
+  <div class="header"><h1>🎁 REWARD</h1></div>
+  <div style="background:#1a1a1a;margin:15px;padding:15px;border-radius:15px">
+    <div style="font-weight:bold;margin-bottom:10px">Referral</div>
+    Bagikan link, dapat +50 GRD/tap<br>
+    <button class="btn btn-klaim" onclick="salinReferral()">SALIN LINK</button>
+    <div id="linkRef" style="color:cyan;font-size:11px;word-break:break-all;margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- NAV BAWAH 4 MENU -->
+<div class="navbar">
+  <div class="nav-item active" onclick="gantiHalaman('beranda',this)"><span class="nav-icon">🏠</span>Beranda</div>
+  <div class="nav-item" onclick="gantiHalaman('berdagang',this)"><div class="nav-plus">+</div></div>
+  <div class="nav-item" onclick="gantiHalaman('dana',this)"><span class="nav-icon">💰</span>Dana</div>
+  <div class="nav-item" onclick="gantiHalaman('reward',this)"><span class="nav-icon">🎁</span>Reward</div>
+</div>
+
+<audio id="djPlayer" loop></audio>
 
 <script>
+let saldoGame = 25600;
+let saldoClaim = 359844;
+let auto = false;
+let interval;
 let web3;
-let userAccount;
-let gameBalance = parseInt(localStorage.getItem('gameBalance')) || 0;
-let contract;
-let autoTapInterval = null; // VARIABEL BARU
+let walletAddress = "";
+let musikAktif = false;
 
-const TOKEN_ADDRESS = "0x4847F2E8dD63ba03b9C4f935BdEd95bEc1bcaCb4";
-const TOKEN_ABI = [
-  {"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"type":"function"},
-  {"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"}
-];
+// GANTI LINK INI - LINK LANGSUNG MP3 BEBAS
+const djLink = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+const djPlayer = document.getElementById('djPlayer');
+djPlayer.volume = 0.6;
 
-async function connect() {
-  if (typeof window.ethereum!== 'undefined') {
-    web3 = new Web3(window.ethereum);
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    userAccount = accounts[0];
-    contract = new web3.eth.Contract(TOKEN_ABI, TOKEN_ADDRESS);
-    document.getElementById('walletInfo').innerText = "✅ Terhubung BSC\n" + userAccount;
-    document.getElementById('connectBtn').innerText = "Terhubung";
-    document.getElementById('claimBtn').disabled = false;
-    loadBlockchainBalance();
-  } else {
-    alert("Buka di Trust Wallet DApp Browser");
+window.addEventListener('load', function(){
+  update();
+  djPlayer.src = djLink;
+  setInterval(()=>{document.getElementById('jam').innerText=new Date().toLocaleTimeString()},1000);
+
+  document.getElementById('tapBtn').onclick = function(){
+    if(!musikAktif) return alert("Klik tombol kuning 'AKTIFKAN MUSIK' dulu bos 🔊");
+
+    auto=!auto;
+    if(auto){
+      this.classList.add('active');
+      this.innerText = "STOP";
+      document.getElementById('infoMusik').innerText = "🎵 Sedang Nambang + Musik Jedak Jeduk";
+      interval=setInterval(()=>{ saldoGame+=200; update(); },200);
+      djPlayer.play(); // PASTI BUNYI KARENA UDAH DI KLIK TADI
+    } else {
+      this.classList.remove('active');
+      this.innerText = "TAP";
+      document.getElementById('infoMusik').innerText = "Klik tombol kuning dulu 1x";
+      clearInterval(interval);
+      djPlayer.pause();
+      djPlayer.currentTime = 0;
+    }
   }
+})
+
+// FUNGSI BARU: BUAT BUKA KUNCI SUARA HP
+function aktifSuara(){
+  djPlayer.play().then(()=>{
+    musikAktif = true;
+    document.getElementById('btnAktifSuara').style.display = 'none';
+    document.getElementById('infoMusik').innerText = "✅ Musik siap. Sekarang klik TAP";
+    alert("Suara aktif! Sekarang klik TAP");
+  }).catch(()=>{
+    alert("Volume HP naikin dulu bos");
+  });
 }
 
-function tap() {
-  gameBalance++;
-  localStorage.setItem('gameBalance', gameBalance);
-  updateUI();
+function gantiHalaman(id, el){
+  document.querySelectorAll('.halaman').forEach(h => h.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
 }
 
-// FUNGSI BARU AUTO TAP
-function toggleAuto() {
-  if (autoTapInterval) {
-    clearInterval(autoTapInterval);
-    autoTapInterval = null;
-    document.getElementById('autoBtn').innerText = "AUTO TAP: OFF";
-    document.getElementById('autoBtn').style.background = "#ff00ff";
-  } else {
-    autoTapInterval = setInterval(tap, 100); // 100ms = 10 tap per detik. Mau lebih cepet ganti jadi 50
-    document.getElementById('autoBtn').innerText = "AUTO TAP: ON";
-    document.getElementById('autoBtn').style.background = "green";
-  }
+function update(){
+  document.getElementById('saldoGame').innerText = saldoGame.toLocaleString('id-ID');
+  document.getElementById('saldoClaim').innerText = saldoClaim.toLocaleString('id-ID');
+  document.getElementById('saldoUSD').innerText = (saldoGame/1000).toFixed(2);
 }
 
-async function claim() {
-  if (!userAccount) return alert("Connect wallet dulu");
-  if (gameBalance <= 0) return alert("Saldo game kosong");
-  claimBtn.disabled = true;
-  claimBtn.innerText = "Menunggu Konfirmasi...";
-  try {
-    const amount = web3.utils.toWei(gameBalance.toString(), 'ether');
-    await contract.methods.transfer(userAccount, amount).send({from: userAccount});
-    gameBalance = 0;
-    localStorage.setItem('gameBalance', 0);
-    updateUI();
-    loadBlockchainBalance();
-    alert("Claim berhasil! Cek Trust Wallet kamu");
-  } catch (err) {
-    alert("Gagal claim: " + err.message);
-  }
-  claimBtn.disabled = false;
-  claimBtn.innerText = "CLAIM KE WALLET";
-}
-
-function updateUI() {
-  document.getElementById('gameBalance').innerText = gameBalance;
-}
-
-async function loadBlockchainBalance() {
-  if (!contract ||!userAccount) return;
-  const balance = await contract.methods.balanceOf(userAccount).call();
-  document.getElementById('blockchainBalance').innerText = web3.utils.fromWei(balance, 'ether');
-}
-
-updateUI();
+function claim(){ if(saldoGame > 0){ saldoClaim += saldoGame; alert("✅ KLAIM "+saldoGame.toLocaleString('id-ID')+" GRD"); saldoGame = 0; update(); }}
+async function connectWallet(){ if(window.ethereum){ try{ web3 = new Web3(window.ethereum); const accounts = await ethereum.request({ method: 'eth_requestAccounts' }); walletAddress = accounts[0]; document.getElementById('wallet').innerText = "Wallet: " + walletAddress.substring(0,6)+"..."+walletAddress.substring(38); await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x38' }] }); alert("✅ Terhubung BSC") }catch(e){alert("Gagal: "+e.message)} } else { alert("Install Metamask/Trustwallet") }}
+function beliGRD(){ alert("💵 BELI GRD\nFitur segera hadir") }
+function kirimGRD(){ if(walletAddress == ""){ alert("Connect wallet dulu!"); return; } let alamat = prompt("Alamat wallet tujuan:"); if(alamat){ alert("📤 Mengirim ke " + alamat) }}
+function terimaGRD(){ if(walletAddress == ""){ alert("Connect wallet dulu!"); return; } alert("Alamat Kamu:\n" + walletAddress) }
+async function withdrawBeneran(){ if(walletAddress == ""){ alert("Connect wallet dulu!"); return; } if(saldoClaim <= 0){ alert("Saldo 0"); return; } alert("✅ WITHDRAW " + saldoClaim.toLocaleString('id-ID') + " GRD ke wallet") }
+async function swapKeUSDT(){ if(walletAddress == ""){ alert("Connect wallet dulu!"); return; } if(saldoClaim <= 0){ alert("Saldo 0"); return; } alert("💵 MENJUAL " + saldoClaim.toLocaleString('id-ID') + " GRD > USDT") }
+function salinReferral(){ let link = window.location.href.split('?')[0] + "?ref=" + walletAddress; navigator.clipboard.writeText(link); document.getElementById('linkRef').innerText = link; alert("✅ Link referral disalin!") }
 </script>
-
 </body>
-  </html>
+</html>
