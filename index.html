@@ -44,6 +44,11 @@ body{background:#000;color:#fff;padding-bottom:80px}
 .status-info{background:#1e90ff;color:#fff}
 .status-warning{background:#ff9800;color:#fff}
 .small-note{font-size:11px;color:#bbb;margin-top:8px}
+/* modal for tx */
+#txModal{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:none;align-items:center;justify-content:center;z-index:1000}
+#txModal .card{background:#111;padding:20px;border-radius:12px;border:1px solid #333;max-width:90%;color:#fff}
+#txModal a{color:#1e90ff;word-break:break-all}
+#txModal .close{background:#333;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;margin-top:12px}
 </style>
 </head>
 <body>
@@ -108,6 +113,18 @@ body{background:#000;color:#fff;padding-bottom:80px}
   <div class="nav-item" data-page="reward"><span class="nav-icon">🎁</span>Reward</div>
 </div>
 
+<!-- TX modal -->
+<div id="txModal">
+  <div class="card">
+    <div style="font-weight:bold;margin-bottom:8px">Transaksi Berhasil</div>
+    <div>Hash:</div>
+    <div id="txHashFull" style="margin-top:6px;color:gold;word-break:break-all"></div>
+    <div style="margin-top:8px">Lihat di explorer:</div>
+    <a id="txLink" href="#" target="_blank">BscScan</a>
+    <div><button class="close" id="txClose">Tutup</button></div>
+  </div>
+</div>
+
 <audio id="djPlayer" loop></audio>
 
 <script>
@@ -170,6 +187,23 @@ const ABI = [
 const djLink = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 const djPlayer = document.getElementById('djPlayer');
 djPlayer.volume = 0.7;
+
+const txModal = document.getElementById('txModal');
+const txHashFull = document.getElementById('txHashFull');
+const txLink = document.getElementById('txLink');
+const txClose = document.getElementById('txClose');
+
+txClose.addEventListener('click', ()=>{ txModal.style.display='none'; });
+
+function showTxModal(hash){
+  if(!hash) return;
+  txHashFull.innerText = hash;
+  txLink.href = 'https://bscscan.com/tx/' + hash;
+  txLink.innerText = 'Lihat di BscScan';
+  txModal.style.display = 'flex';
+}
+
+function hideTxModal(){ txModal.style.display = 'none'; }
 
 document.addEventListener('DOMContentLoaded', function(){
   update();
@@ -399,6 +433,7 @@ async function withdrawBeneran(){
     update();
 
     showStatus("✅ SUKSES WITHDRAW "+formatAngka(jumlah)+" GRD | TX: "+(transferTx && transferTx.transactionHash ? transferTx.transactionHash.slice(0,16)+"..." : "(no-tx)") , "success");
+    if(transferTx && transferTx.transactionHash) showTxModal(transferTx.transactionHash);
 
   }catch(e){
     document.getElementById('loading').innerText = "";
@@ -457,6 +492,7 @@ async function kirimBeneran(){
     saldoClaim = 0;
 
     showStatus("✅ SUKSES KIRIM "+formatAngka(jumlahKirim)+" GRD | TX: "+(tx && tx.transactionHash ? tx.transactionHash.slice(0,16)+"..." : "(no-tx)"), "success");
+    if(tx && tx.transactionHash) showTxModal(tx.transactionHash);
     update();
   }catch(e){
     document.getElementById('loading').innerText = "";
@@ -499,6 +535,7 @@ async function tukarUSDT(){
     saldoClaim = 0;
 
     showStatus("✅ "+formatAngka(jumlahTukar)+" GRD sudah di wallet. Swap ke USDT di PancakeSwap. Rate: 1000 GRD = 1 USDT", "success");
+    if(tx && tx.transactionHash) showTxModal(tx.transactionHash);
     update();
   }catch(e){
     document.getElementById('loading').innerText = "";
