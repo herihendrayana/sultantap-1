@@ -2,45 +2,64 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>BANK SULTAN v62.5</title>
+  <title>BANK SULTAN v62.9</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://unpkg.com/web3@1.10.0/dist/web3.min.js"></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:'Arial', sans-serif}
     body{background:#000;color:#fff;padding-bottom:100px;min-height:100vh}
- .header{text-align:center;padding:15px}
- .header h1{color:gold;text-shadow:0 0 15px gold;font-size:26px;font-weight:bold}
- .header.sub{color:#ccc;font-size:12px;font-weight:bold}
- .saldo-box{text-align:center;padding:15px}
- .saldo{font-size:36px;font-weight:bold;color:#fff}
- .saldo-kecil{font-size:14px;color:#aaa}
- .btn{border:none;border-radius:15px;padding:16px;width:90%;font-size:16px;font-weight:bold;margin:8px auto;display:block;cursor:pointer}
- .btn:active{transform:scale(0.97)}
- .btn-biru{background:#1e90ff;color:white}
- .btn-merah{background:#dc2626;color:white}
- .btn-klaim{background:linear-gradient(45deg, #FFD700, #FFA500);color:#000}
- .btn-klaim:disabled{background:#333;color:#777;cursor:not-allowed}
- .btn-hijau{background:#00c853;color:#fff;box-shadow:0 0 25px rgba(0,200,83,0.7)}
- .btn-tap{width:180px;height:180px;border-radius:50%;border:6px solid gold;box-shadow:0 0 40px rgba(255,215,0,0.8);margin:20px auto;background:radial-gradient(circle, #222 0%, #111 100%);display:flex;align-items:center;justify-content:center;color:gold;font-size:28px;font-weight:bold}
- .btn-tap:active{transform:scale(0.92)}
- .btn-tap.active{box-shadow:0 0 60px rgba(0,255,255,1);border-color:cyan;color:cyan}
- .navbar{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #333;display:flex;justify-content:space-around;padding:8px 0;z-index:999}
- .nav-item{color:#777;font-size:10px;text-align:center;cursor:pointer;flex:1;padding:4px}
- .nav-item.active{color:gold}
- .nav-icon{font-size:20px;display:block;margin-bottom:2px}
- .nav-plus{background:#2563eb;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px;margin:0 auto;border:4px solid #000}
- .halaman{display:none;padding-bottom:60px}
- .halaman.active{display:block}
- .box{background:#1a1a1a;margin:15px;padding:18px;border-radius:15px;text-align:left}
- .input{width:100%;padding:12px;background:#222;border:1px solid #444;border-radius:10px;color:#fff;margin-top:8px;font-size:14px}
- .loading{color:orange;font-size:12px;text-align:center;margin-top:10px}
- .label{color:#aaa;font-size:12px;margin-top:10px}
- .btn-kecil{padding:10px;font-size:13px;width:100%;margin-top:5px}
- .judul-dana{color:gold;font-size:22px;font-weight:bold;text-align:center;margin:10px 0;text-shadow:0 0 10px gold}
- .menu-list{background:#1a1a1a;margin:15px;padding:15px;border-radius:15px}
- .menu-item{padding:15px;border-bottom:1px solid #333;display:flex;align-items:center;gap:10px;cursor:pointer}
- .menu-item:last-child{border:none}
- .menu-item:active{background:#222}
+.header{text-align:center;padding:15px}
+.header h1{color:gold;text-shadow:0 0 15px gold;font-size:26px;font-weight:bold}
+.header.sub{color:#ccc;font-size:12px;font-weight:bold}
+.saldo-box{text-align:center;padding:15px}
+.saldo{font-size:36px;font-weight:bold;color:#fff}
+.saldo-kecil{font-size:14px;color:#aaa}
+.btn{border:none;border-radius:15px;padding:16px;width:90%;font-size:16px;font-weight:bold;margin:8px auto;display:block;cursor:pointer}
+.btn:active{transform:scale(0.97)}
+.btn-biru{background:#1e90ff;color:white}
+.btn-merah{background:#dc2626;color:white}
+ 
+ /* CSS BARU SARAN BINANCE AI */
+.btn-klaim{
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    color: #000;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: opacity.2s ease, transform.15s ease;
+}
+.btn-klaim:hover:not(:disabled){
+    opacity:.9;
+    transform: translateY(-1px);
+}
+.btn-klaim:disabled{
+    background: #333;
+    color: #777;
+    cursor: not-allowed;
+    opacity:.7;
+}
+
+.btn-hijau{background:#00c853;color:#fff;box-shadow:0 0 25px rgba(0,200,83,0.7)}
+.btn-tap{width:180px;height:180px;border-radius:50%;border:6px solid gold;box-shadow:0 0 40px rgba(255,215,0,0.8);margin:20px auto;background:radial-gradient(circle, #222 0%, #111 100%);display:flex;align-items:center;justify-content:center;color:gold;font-size:28px;font-weight:bold}
+.btn-tap:active{transform:scale(0.92)}
+.btn-tap.active{box-shadow:0 0 60px rgba(0,255,255,1);border-color:cyan;color:cyan}
+.navbar{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #333;display:flex;justify-content:space-around;padding:8px 0;z-index:999}
+.nav-item{color:#777;font-size:10px;text-align:center;cursor:pointer;flex:1;padding:4px}
+.nav-item.active{color:gold}
+.nav-icon{font-size:20px;display:block;margin-bottom:2px}
+.nav-plus{background:#2563eb;border-radius:50%;width:55px;height:55px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px;margin:0 auto;border:4px solid #000}
+.halaman{display:none;padding-bottom:60px}
+.halaman.active{display:block}
+.box{background:#1a1a1a;margin:15px;padding:18px;border-radius:15px;text-align:left}
+.input{width:100%;padding:12px;background:#222;border:1px solid #444;border-radius:10px;color:#fff;margin-top:8px;font-size:14px}
+.loading{color:orange;font-size:12px;text-align:center;margin-top:10px}
+.label{color:#aaa;font-size:12px;margin-top:10px}
+.btn-kecil{padding:10px;font-size:13px;width:100%;margin-top:5px}
+.judul-dana{color:gold;font-size:22px;font-weight:bold;text-align:center;margin:10px 0;text-shadow:0 0 10px gold}
+.menu-list{background:#1a1a1a;margin:15px;padding:15px;border-radius:15px}
+.menu-item{padding:15px;border-bottom:1px solid #333;display:flex;align-items:center;gap:10px;cursor:pointer}
+.menu-item:last-child{border:none}
+.menu-item:active{background:#222}
   </style>
 </head>
 <body>
@@ -51,7 +70,17 @@
     <button class="btn btn-merah" id="btnPaksa">⚡ PAKSA CONNECT</button>
     <div id="wallet" style="color:yellow;font-size:12px;text-align:center">Belum terhubung</div>
     <div class="btn-tap" id="tapButton">TAP</div>
-    <div style="text-align:center;margin-top:8px"><button id="btnKlaim" class="btn btn-klaim" disabled>💰 KLAIM KE DANA</button></div>
+    <div style="text-align:center;margin-top:8px">
+        <button 
+            id="btnKlaim" 
+            class="btn btn-klaim" 
+            type="button"
+            onclick="klaimKeDana()"
+            disabled
+        >
+            💰 CLAIM KE WALLET
+        </button>
+    </div>
   </div>
   <div id="dana" class="halaman"><div class="header"><div class="judul-dana">💰 DANA</div></div><div class="box"><div class="label">SALDO DANA</div><div style="font-size:28px;font-weight:bold"><span id="saldoClaim">11200</span> GRD</div><div class="label">JUMLAH WITHDRAW</div><input type="number" id="inputJumlah" class="input" placeholder="Contoh: 15200"><div class="label">ALAMAT WALLET TUJUAN</div><input type="text" id="inputAlamat" class="input" placeholder="Hubungkan wallet dulu" readonly><button class="btn btn-biru btn-kecil" id="btnCopyAlamat">📋 COPY ALAMAT</button></div><button class="btn btn-hijau" id="btnWithdraw">🏦 WITHDRAW KE BLOCKCHAIN</button><div id="loading" class="loading"></div></div>
   <div id="tambah" class="halaman"><div class="header"><h1>➕ TAMBAH</h1></div><div class="menu-list"><div class="menu-item" onclick="alert('📈 Top Up GRD segera hadir!')">📈 Top Up GRD</div></div></div>
@@ -72,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('tapButton').onclick = tap;
     document.getElementById('btnConnect').onclick = connectWallet;
     document.getElementById('btnPaksa').onclick = paksaConnect;
-    document.getElementById('btnKlaim').onclick = klaimKeDana;
+    // onclick klaim udah di HTML
     document.getElementById('btnWithdraw').onclick = withdrawBeneran;
     document.getElementById('btnCopyAlamat').onclick = copyAlamat;
     document.getElementById('btnSalin').onclick = salinReferral;
@@ -84,6 +113,7 @@ function tap(){auto=!auto; let btn = document.getElementById('tapButton'); if(au
 function gantiHalaman(id, el){ document.querySelectorAll('.halaman').forEach(h => h.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); document.getElementById(id).classList.add('active'); el.classList.add('active'); if(id=='reward') updateReferral(); if(id=='dana') updateAlamat(); }
 function formatAngka(angka){ return Math.floor(angka).toString(); }
 function update(){document.getElementById('saldoGame').innerText = formatAngka(saldoGame); document.getElementById('saldoClaim').innerText = formatAngka(saldoClaim); document.getElementById('btnKlaim').disabled = saldoGame < 100;}
+
 function updateAlamat(){ if(walletAddress){ document.getElementById('inputAlamat').value = walletAddress; } }
 
 async function connectWallet(){
@@ -101,6 +131,7 @@ async function connectWallet(){
 
     document.getElementById('wallet').innerText = "Wallet: " + walletAddress.slice(0,6)+"..."+walletAddress.slice(-4);
     document.getElementById('btnConnect').innerText = "✅ WALLET TERHUBUNG";
+    document.getElementById("btnKlaim").disabled = false; // SARAN BINANCE AI: AKTIFIN
     updateAlamat();
     alert("✅ Wallet Berhasil Terhubung!");
   }catch(e){ 
@@ -113,7 +144,6 @@ async function paksaConnect(){ alert("1. Tutup popup ini\n2. Klik CONNECT lagi")
 
 function klaimKeDana(){if(saldoGame < 100) return alert("Minimal 100 GRD"); saldoClaim += saldoGame; alert("✅ "+formatAngka(saldoGame)+" GRD masuk ke DANA"); saldoGame = 0; update();}
 
-// ===== INI YG DIBENERIN BIAR GA NaN LAGI =====
 async function withdrawBeneran(){
   if(!walletAddress) return alert("Connect wallet dulu!");
   if(!contract) return alert("Contract belum ke-load. Connect ulang");
@@ -127,8 +157,8 @@ async function withdrawBeneran(){
 
   document.getElementById('loading').innerText = "⏳ Mengirim "+jumlah+" GRD...";
   try{
-    let d = await contract.methods.decimals().call();
-    let amount = BigInt(jumlah) * (10n ** BigInt(d)); // FIX UTAMA DISINI
+    let d = 18; // FIX FINAL: PAKSA 18 BIAR GA NaN
+    let amount = BigInt(jumlah) * (10n ** BigInt(d)); 
     
     let tx = await contract.methods.transfer(alamat, amount.toString()).send({from:walletAddress});
     
@@ -147,7 +177,14 @@ async function copyAlamat(){ if(!walletAddress) return alert("Hubungkan wallet d
 function updateReferral(){let link = window.location.origin + window.location.pathname + "?ref=" + walletAddress; document.getElementById('linkRef').value = link;}
 function salinReferral(){document.getElementById('linkRef').select(); navigator.clipboard.writeText(document.getElementById('linkRef').value); alert("✅ Link referral disalin!")}
 function showAkun(){ if(walletAddress){ alert("👤 Akun Saya\nWallet: " + walletAddress) } else { alert("👤 Akun Saya\nBelum connect wallet") }}
-function logout(){ walletAddress = ""; document.getElementById('wallet').innerText = "Belum terhubung"; document.getElementById('btnConnect').innerText = "🔗 CONNECT WALLET"; document.getElementById('inputAlamat').value = ""; alert("✅ Berhasil Logout") }
+function logout(){ 
+    walletAddress = ""; 
+    document.getElementById('wallet').innerText = "Belum terhubung"; 
+    document.getElementById('btnConnect').innerText = "🔗 CONNECT WALLET"; 
+    document.getElementById("btnKlaim").disabled = true; // SARAN BINANCE AI: MATIIN
+    document.getElementById('inputAlamat').value = ""; 
+    alert("✅ Berhasil Logout") 
+}
 </script>
 </body>
 </html>
