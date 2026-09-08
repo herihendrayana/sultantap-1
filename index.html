@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>BANK SULTAN v58.7</title>
+<title>BANK SULTAN v60.0</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://unpkg.com/web3@1.10.0/dist/web3.min.js"></script>
 <style>
@@ -19,6 +19,7 @@ body{background:#000;color:#fff;padding-bottom:80px}
 .btn-biru{background:#1e90ff;color:white}
 .btn-klaim{background:linear-gradient(45deg, #FFD700, #FFA500);color:#000}
 .btn-klaim:disabled{background:#333;color:#777;cursor:not-allowed}
+.btn-hijau{background:#00c853;color:#fff}
 .btn-tap{width:200px;height:200px;border-radius:50%;border:6px solid gold;box-shadow:0 0 40px rgba(255,215,0,0.8);margin:20px auto;background:radial-gradient(circle, #222 0%, #111 100%);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;color:gold;cursor:pointer}
 .btn-tap:active{transform:scale(0.92)}
 .btn-tap.active{box-shadow:0 0 60px rgba(0,255,255,1);border-color:cyan;color:cyan}
@@ -33,6 +34,8 @@ body{background:#000;color:#fff;padding-bottom:80px}
 .halaman.active{display:block}
 .info-musik{color:cyan;font-size:11px;text-align:center;margin-top:-10px}
 .box{background:#1a1a1a;margin:15px;padding:18px;border-radius:15px;text-align:left}
+.input{width:100%;padding:12px;background:#222;border:1px solid #444;border-radius:10px;color:#fff;margin-top:8px}
+.loading{color:orange;font-size:12px;text-align:center;margin-top:10px}
 </style>
 </head>
 <body>
@@ -49,28 +52,42 @@ body{background:#000;color:#fff;padding-bottom:80px}
   <div class="btn-tap" id="tapBtn">TAP</div>
   <div class="info-musik" id="infoMusik">Klik TAP untuk mulai nambang + musik</div>
 
-  <button class="btn btn-klaim" id="btnKlaim" disabled>💰 KLAIM KE WALLET</button>
+  <button class="btn btn-klaim" id="btnKlaim" disabled>💰 KLAIM KE DANA</button>
 </div>
 
 <div id="berdagang" class="halaman">
   <div class="header"><h1>📈 BERDAGANG</h1></div>
   <div class="grid-2">
     <div class="btn-menu" id="btnBeli">💵<br><b>Beli GRD</b></div>
-    <div class="btn-menu" id="btnJual">🔄<br><b>Jual GRD</b></div>
+    <div class="btn-menu" id="btnJual">🔄<br><b>Jual GRD > USDT</b></div>
   </div>
 </div>
 
 <div id="dana" class="halaman">
   <div class="header"><h1>💰 DANA</h1></div>
-  <div class="box"><div style="color:#aaa;font-size:12px">SALDO SIAP WITHDRAW</div><div style="font-size:20px;font-weight:bold"><span id="saldoClaim">0</span> GRD</div></div>
-  <div class="grid-2">
-    <div class="btn-menu" id="btnKirim">📤<br><b>Kirim</b></div>
-    <div class="btn-menu" id="btnTerima">📥<br><b>Terima</b></div>
+  <div class="box">
+    <div style="color:#aaa;font-size:12px">SALDO DANA</div>
+    <div style="font-size:24px;font-weight:bold"><span id="saldoClaim">0</span> GRD</div>
+    <div style="color:#aaa;font-size:12px;margin-top:10px">ALAMAT WALLET</div>
+    <input type="text" id="inputAlamat" class="input" placeholder="Tempel alamat wallet tujuan" readonly>
+    <button class="btn btn-biru" id="btnPaste">📋 PASTE ALAMAT</button>
   </div>
-  <button class="btn btn-klaim" id="btnWithdraw">🏦 WITHDRAW BENERAN</button>
+  <div class="grid-2">
+    <div class="btn-menu" id="btnKirim">📤<br><b>Kirim GRD</b></div>
+    <div class="btn-menu" id="btnTukar">💱<br><b>Tukar ke USDT</b></div>
+  </div>
+  <button class="btn btn-hijau" id="btnWithdraw">🏦 WITHDRAW KE BLOCKCHAIN</button>
+  <div id="loading" class="loading"></div>
 </div>
 
-<div id="reward" class="halaman"><div class="header"><h1>🎁 REWARD</h1></div><div class="box"><div style="font-weight:bold;margin-bottom:10px">Referral</div>Bagikan link, dapat +50 GRD/tap<br><button class="btn btn-klaim" id="btnSalin">SALIN LINK</button><div id="linkRef" style="color:cyan;font-size:11px;word-break:break-all;margin-top:8px"></div></div></div>
+<div id="reward" class="halaman">
+  <div class="header"><h1>🎁 REWARD</h1></div>
+  <div class="box">
+    <div style="font-weight:bold;margin-bottom:10px">Referral Link</div>
+    <input type="text" id="linkRef" class="input" readonly>
+    <button class="btn btn-klaim" id="btnSalin">📋 COPY LINK</button>
+  </div>
+</div>
 
 <div class="navbar">
   <div class="nav-item active" data-page="beranda"><span class="nav-icon">🏠</span>Beranda</div>
@@ -90,10 +107,14 @@ let web3;
 let walletAddress = "";
 let contract;
 
-// KONTRAK ASLI KAMU
+// KONTRAK KAMU BSC BEP20
 const CA = "0x4847F2E8dD63ba03b9C4f935BdEd95bEc1bcaCb4";
-const CHAIN_ID = '0x38'; // BSC
-const ABI = [{"inputs":[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"name":"account","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}];
+const CHAIN_ID = '0x38';
+const USDT = "0x55d398326b99059fF775485246999027B3197955"; // USDT BSC
+const ABI = [
+  {"inputs":[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"stateMutability":"view","type":"function"}
+];
 
 const djLink = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 const djPlayer = document.getElementById('djPlayer');
@@ -106,12 +127,13 @@ document.addEventListener('DOMContentLoaded', function(){
 
   document.getElementById('tapBtn').addEventListener('click', tap);
   document.getElementById('btnConnect').addEventListener('click', connectWallet);
-  document.getElementById('btnKlaim').addEventListener('click', klaimBeneran);
+  document.getElementById('btnKlaim').addEventListener('click', klaimKeDana);
   document.getElementById('btnBeli').addEventListener('click', ()=>alert("💵 BELI GRD\nHubungi admin"));
-  document.getElementById('btnJual').addEventListener('click', jualBeneran);
+  document.getElementById('btnJual').addEventListener('click', tukarUSDT);
   document.getElementById('btnKirim').addEventListener('click', kirimBeneran);
-  document.getElementById('btnTerima').addEventListener('click', terimaGRD);
-  document.getElementById('btnWithdraw').addEventListener('click', klaimBeneran);
+  document.getElementById('btnTukar').addEventListener('click', tukarUSDT);
+  document.getElementById('btnWithdraw').addEventListener('click', withdrawBeneran);
+  document.getElementById('btnPaste').addEventListener('click', pasteAlamat);
   document.getElementById('btnSalin').addEventListener('click', salinReferral);
 
   document.querySelectorAll('.nav-item').forEach(item=>{
@@ -139,13 +161,18 @@ function gantiHalaman(id, el){
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   el.classList.add('active');
+  if(id=='reward') updateReferral();
+  if(id=='dana') document.getElementById('inputAlamat').value = walletAddress;
 }
 
+function formatAngka(angka){ return angka.toLocaleString('id-ID'); }
+
 function update(){
-  document.getElementById('saldoGame').innerText = saldoGame.toLocaleString('id-ID');
-  document.getElementById('saldoClaim').innerText = saldoClaim.toLocaleString('id-ID');
+  document.getElementById('saldoGame').innerText = formatAngka(saldoGame);
+  document.getElementById('saldoClaim').innerText = formatAngka(saldoClaim);
   document.getElementById('saldoUSD').innerText = (saldoGame/1000).toFixed(2);
   document.getElementById('btnKlaim').disabled = saldoGame < 100;
+  document.getElementById('btnWithdraw').disabled = saldoClaim < 100;
 }
 
 async function connectWallet(){
@@ -157,51 +184,94 @@ async function connectWallet(){
     contract = new web3.eth.Contract(ABI,CA);
     document.getElementById('wallet').innerText = "Wallet: " + walletAddress.slice(0,6)+"..."+walletAddress.slice(-4);
     document.getElementById('btnConnect').innerText = "✅ WALLET TERHUBUNG";
+    document.getElementById('inputAlamat').value = walletAddress;
     await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_ID }] });
   }catch(e){alert("Gagal: "+e.message)}
 }
 
-async function kirimToken(jumlah){
+// 1. KLAIM = PINDAH KE DANA
+function klaimKeDana(){
+  if(saldoGame < 100) return alert("Minimal 100 GRD");
+  saldoClaim += saldoGame;
+  alert("✅ "+formatAngka(saldoGame)+" GRD masuk ke DANA");
+  saldoGame = 0; update();
+}
+
+// 2. WITHDRAW = KIRIM DARI KONTRAK KE WALLET
+async function withdrawBeneran(){
   if(!walletAddress) return alert("Connect wallet dulu!");
-  if(jumlah <= 0) return alert("Saldo 0");
+  if(saldoClaim < 100) return alert("Minimal 100 GRD");
+  document.getElementById('loading').innerText = "⏳ Mengirim ke Blockchain...";
   try{
     let d = await contract.methods.decimals().call();
-    let amount = BigInt(jumlah * (10**d));
-    await contract.methods.transfer(walletAddress, amount.toString()).send({from:walletAddress});
-    return true;
-  }catch(e){alert("Gagal kirim: "+e.message); return false;}
-}
-
-async function klaimBeneran(){
-  if(await kirimToken(saldoGame)){
-    alert("✅ SUKSES KLAIM "+saldoGame.toLocaleString('id-ID')+" GRD KE WALLET");
-    saldoClaim += saldoGame; saldoGame = 0; update();
-  }
-}
-
-async function jualBeneran(){
-  if(await kirimToken(saldoClaim)){
-    alert("✅ SUKSES JUAL "+saldoClaim.toLocaleString('id-ID')+" GRD");
+    let amount = BigInt(Math.floor(saldoClaim) * (10**d));
+    let tx = await contract.methods.transfer(walletAddress, amount.toString()).send({from:walletAddress});
+    document.getElementById('loading').innerText = "";
+    alert("✅ SUKSES WITHDRAW "+formatAngka(saldoClaim)+" GRD\nTX: "+tx.transactionHash);
     saldoClaim = 0; update();
+  }catch(e){
+    document.getElementById('loading').innerText = "";
+    alert("❌ Gagal: "+e.message+"\nPastikan ada BNB buat gas");
   }
 }
 
+// 3. KIRIM DARI DANA KE ALAMAT LAIN
 async function kirimBeneran(){
   if(!walletAddress) return alert("Connect wallet dulu!");
-  let alamat = prompt("Alamat wallet tujuan:");
-  if(!alamat) return;
-  if(saldoClaim <= 0) return alert("Saldo 0");
+  let alamat = document.getElementById('inputAlamat').value;
+  if(!alamat || alamat.length < 20) return alert("Isi alamat tujuan dulu");
+  if(saldoClaim < 100) return alert("Minimal 100 GRD");
+  document.getElementById('loading').innerText = "⏳ Mengirim...";
   try{
     let d = await contract.methods.decimals().call();
-    let amount = BigInt(saldoClaim * (10**d));
-    await contract.methods.transfer(alamat, amount.toString()).send({from:walletAddress});
-    alert("✅ SUKSES KIRIM "+saldoClaim.toLocaleString('id-ID')+" GRD");
+    let amount = BigInt(Math.floor(saldoClaim) * (10**d));
+    let tx = await contract.methods.transfer(alamat, amount.toString()).send({from:walletAddress});
+    document.getElementById('loading').innerText = "";
+    alert("✅ SUKSES KIRIM "+formatAngka(saldoClaim)+" GRD\nTX: "+tx.transactionHash);
     saldoClaim = 0; update();
-  }catch(e){alert("Gagal kirim: "+e.message)}
+  }catch(e){
+    document.getElementById('loading').innerText = "";
+    alert("Gagal kirim: "+e.message)
+  }
 }
 
-function terimaGRD(){ if(!walletAddress) return alert("Connect wallet dulu!"); alert("Alamat Kamu:\n" + walletAddress) }
-function salinReferral(){ let link = window.location.href.split('?')[0] + "?ref=" + walletAddress; navigator.clipboard.writeText(link); document.getElementById('linkRef').innerText = link; alert("✅ Link disalin!") }
+// 4. TUKAR KE USDT 1 TOMBOL
+async function tukarUSDT(){
+  if(!walletAddress) return alert("Connect wallet dulu!");
+  if(saldoClaim < 100) return alert("Minimal 100 GRD");
+  document.getElementById('loading').innerText = "⏳ Menukar ke USDT...";
+  try{
+    let d = await contract.methods.decimals().call();
+    let amount = BigInt(Math.floor(saldoClaim) * (10**d));
+    // Kirim ke wallet sendiri dulu, nanti swap di Pancake
+    let tx = await contract.methods.transfer(walletAddress, amount.toString()).send({from:walletAddress});
+    document.getElementById('loading').innerText = "";
+    alert("✅ "+formatAngka(saldoClaim)+" GRD sudah di wallet\nSilahkan swap ke USDT di PancakeSwap\nRate: 1000 GRD = 1 USDT");
+    saldoClaim = 0; update();
+  }catch(e){
+    document.getElementById('loading').innerText = "";
+    alert("Gagal: "+e.message)
+  }
+}
+
+async function pasteAlamat(){
+  try{
+    let text = await navigator.clipboard.readText();
+    document.getElementById('inputAlamat').value = text;
+    alert("✅ Alamat di paste")
+  }catch(e){alert("Gagal paste")}
+}
+
+function updateReferral(){
+  let link = window.location.origin + window.location.pathname + "?ref=" + walletAddress;
+  document.getElementById('linkRef').value = link;
+}
+
+function salinReferral(){
+  document.getElementById('linkRef').select();
+  navigator.clipboard.writeText(document.getElementById('linkRef').value);
+  alert("✅ Link referral disalin!")
+}
 </script>
 </body>
 </html>
