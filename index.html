@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>BANK SULTAN v61.8</title>
+  <title>BANK SULTAN v61.9</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://unpkg.com/web3@1.10.0/dist/web3.min.js"></script>
 
@@ -18,6 +18,7 @@
 .btn{border:none;border-radius:15px;padding:16px;width:90%;font-size:16px;font-weight:bold;margin:8px auto;display:block;cursor:pointer}
 .btn:active{transform:scale(0.97)}
 .btn-biru{background:#1e90ff;color:white}
+.btn-merah{background:#dc2626;color:white}
 .btn-klaim{background:linear-gradient(45deg, #FFD700, #FFA500);color:#000}
 .btn-klaim:disabled{background:#333;color:#777;cursor:not-allowed}
 .btn-hijau{background:#00c853;color:#fff;box-shadow:0 0 25px rgba(0,200,83,0.7)}
@@ -58,6 +59,7 @@
     </div>
 
     <button class="btn btn-biru" id="btnConnect">🔗 CONNECT WALLET</button>
+    <button class="btn btn-merah" id="btnPaksa">⚡ PAKSA CONNECT</button>
     <div id="wallet" style="color:yellow;font-size:12px;text-align:center">Belum terhubung</div>
 
     <div class="btn-tap" id="tapButton">TAP</div>
@@ -102,12 +104,13 @@
     const ABI = [{"inputs":[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"stateMutability":"view","type":"function"}];
     const djPlayer = document.getElementById('djPlayer'); djPlayer.src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"; djPlayer.volume = 0.7;
 
-    window.addEventListener('load', () => { setTimeout(checkWallet, 1000); });
+    window.addEventListener('load', () => { setTimeout(checkWallet, 1500); });
     function checkWallet(){ if(typeof window.BinanceChain!== 'undefined' || typeof window.ethereum!== 'undefined'){ document.getElementById('wallet').innerText = "✅ Terdeteksi Wallet Binance"; } }
 
     update(); updateJam(); setInterval(updateJam,1000);
     document.getElementById('tapButton').onclick = tap;
     document.getElementById('btnConnect').onclick = connectWallet;
+    document.getElementById('btnPaksa').onclick = paksaConnect; // TOMBOL BARU
     document.getElementById('btnKlaim').onclick = klaimKeDana;
     document.getElementById('btnWithdraw').onclick = withdrawBeneran;
     document.getElementById('btnCopyAlamat').onclick = copyAlamat;
@@ -119,12 +122,7 @@
     function gantiHalaman(id, el){ document.querySelectorAll('.halaman').forEach(h => h.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); document.getElementById(id).classList.add('active'); el.classList.add('active'); if(id=='reward') updateReferral(); if(id=='dana') updateAlamat(); }
     function formatAngka(angka){ return Math.floor(angka).toString(); }
     function update(){document.getElementById('saldoGame').innerText = formatAngka(saldoGame); document.getElementById('saldoClaim').innerText = formatAngka(saldoClaim); document.getElementById('btnKlaim').disabled = saldoGame < 100;}
-    
-    function updateAlamat(){ 
-      if(walletAddress){ 
-        document.getElementById('inputAlamat').value = walletAddress; 
-      } 
-    } // <-- INI YG TADI KURANG KURUNG KURAWAL
+    function updateAlamat(){ if(walletAddress){ document.getElementById('inputAlamat').value = walletAddress; } }
 
     async function connectWallet(){
       try{
@@ -134,19 +132,21 @@
 
         web3 = new Web3(provider);
         let accounts = await provider.request({ method: 'eth_requestAccounts' });
-        
         walletAddress = accounts[0];
         contract = new web3.eth.Contract(ABI,CA);
-        
         document.getElementById('wallet').innerText = "Wallet: " + walletAddress.slice(0,6)+"..."+walletAddress.slice(-4);
         document.getElementById('btnConnect').innerText = "✅ WALLET TERHUBUNG";
         updateAlamat();
-        
         await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_ID }] }).catch(()=>{});
-        
-        alert("✅ Wallet Berhasil Terhubung ke BSC!");
-        
-      }catch(e){ alert("❌ Gagal Connect: "+e.message) }
+        alert("✅ Wallet Berhasil Terhubung!");
+      }catch(e){ alert("❌ Gagal: "+e.message) }
+    }
+
+    // TOMBOL PAKSA BUAT BINANCE
+    async function paksaConnect(){
+      alert("Tutup popup ini lalu klik 'Connect' di Binance")
+      await new Promise(r => setTimeout(r, 1000));
+      connectWallet();
     }
 
     function klaimKeDana(){if(saldoGame < 100) return alert("Minimal 100 GRD"); saldoClaim += saldoGame; alert("✅ "+formatAngka(saldoGame)+" GRD masuk ke DANA"); saldoGame = 0; update();}
